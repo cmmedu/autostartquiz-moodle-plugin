@@ -1,7 +1,6 @@
 # Plugin de inicio automático para cuestionarios
 
-[English Version](README.md)
-
+[Read on english](README.md)
 
 Este plugin facilita que los estudiantes accedan de inmediato a ciertos cuestionarios marcando la casilla de "inicio automático", lo que crea una experiencia más fluida al evitar pasos adicionales antes de responder.
 

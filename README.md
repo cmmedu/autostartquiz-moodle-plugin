@@ -1,6 +1,6 @@
 # Autostart Quiz Plugin
 
-[Versión en Español](README_ES.md)
+[Leer en Español](README_ES.md)
 
 This plugin lets students enter specific quizzes immediately by toggling the “autostart” checkbox, eliminating extra clicks and smoothing the quiz experience.
 
