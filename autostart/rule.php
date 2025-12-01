@@ -94,13 +94,14 @@ class quizaccess_autostart extends access_rule_base {
         $quiz = $quizform->get_current();
         $defaultvalue = 0;
         
-        // Obtener el valor de la tabla quizaccess_autostart
-        if ($quiz && isset($quiz->id)) {
-            $autostart = $DB->get_record('quizaccess_autostart', ['quizid' => $quiz->id]);
+        // Verificar que quiz->id existe y es un número entero válido (no cadena vacía)
+        if ($quiz && isset($quiz->id) && !empty($quiz->id) && is_numeric($quiz->id) && $quiz->id > 0) {
+            $autostart = $DB->get_record('quizaccess_autostart', ['quizid' => (int)$quiz->id]);
             if ($autostart && !empty($autostart->enabled)) {
                 $defaultvalue = 1;
             }
         }
+        
         
         // Agregar header para la sección propia
         $mform->addElement('header', 'autostartheader', 
@@ -129,15 +130,17 @@ class quizaccess_autostart extends access_rule_base {
         global $DB;
         
         // El valor viene del formulario en $quiz->autostart_enabled
-        if (!isset($quiz->id) || !isset($quiz->autostart_enabled)) {
+        if (!isset($quiz->id) || !isset($quiz->autostart_enabled) || 
+            empty($quiz->id) || !is_numeric($quiz->id) || $quiz->id <= 0) {
             return;
         }
         
         $enabled = !empty($quiz->autostart_enabled) ? 1 : 0;
         $now = time();
+        $quizid = (int)$quiz->id;
         
         // Buscar si ya existe un registro para este quiz
-        $existing = $DB->get_record('quizaccess_autostart', ['quizid' => $quiz->id]);
+        $existing = $DB->get_record('quizaccess_autostart', ['quizid' => $quizid]);
         
         if ($existing) {
             // Actualizar el registro existente
@@ -148,7 +151,7 @@ class quizaccess_autostart extends access_rule_base {
             // Crear un nuevo registro solo si está habilitado
             if ($enabled) {
                 $record = new stdClass();
-                $record->quizid = $quiz->id;
+                $record->quizid = $quizid;
                 $record->enabled = $enabled;
                 $record->timecreated = $now;
                 $record->timemodified = $now;
@@ -165,8 +168,8 @@ class quizaccess_autostart extends access_rule_base {
     public static function delete_settings($quiz) {
         global $DB;
         
-        if (isset($quiz->id)) {
-            $DB->delete_records('quizaccess_autostart', ['quizid' => $quiz->id]);
+        if (isset($quiz->id) && !empty($quiz->id) && is_numeric($quiz->id) && $quiz->id > 0) {
+            $DB->delete_records('quizaccess_autostart', ['quizid' => (int)$quiz->id]);
         }
     }
     
