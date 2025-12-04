@@ -5,3 +5,5 @@ $string['autostartheader'] = 'Start automatically';
 $string['autostartheader_help'] = 'Configure automatic start options for the quiz.';
 $string['autostartenabled'] = 'Start the quiz automatically';
 $string['autostartenabled_help'] = 'If enabled, the quiz will open immediately without the intermediate start screen.';
+$string['hidequestionsinfotostudents'] = 'Hide questions info to students';
+$string['hidequestionsinfotostudents_help'] = 'If enabled, question info will be hidden from students using CSS.';

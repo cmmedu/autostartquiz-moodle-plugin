@@ -2,7 +2,7 @@
 
 [Read on english](README.md)
 
-Este plugin facilita que los estudiantes accedan de inmediato a ciertos cuestionarios marcando la casilla de "inicio automático", lo que crea una experiencia más fluida al evitar pasos adicionales antes de responder.
+Este plugin facilita que los estudiantes accedan de inmediato a ciertos cuestionarios marcando la casilla de "inicio automático", lo que crea una experiencia más fluida al evitar pasos adicionales antes de responder. Útil para casos en los que se desea una mezcla entre una página y un cuestionario, con contenido y preguntas, donde el estudiante no lo percibe como un cuestionario evaluado.
 
 ![Activar inicio automático](images/checkbox.png)
 

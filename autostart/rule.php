@@ -43,10 +43,10 @@ class quizaccess_autostart extends access_rule_base {
         
         $quiz = $quizobj->get_quiz();
         
-        // Verificar si el autostart está habilitado para este quiz
+        // Verificar si el autostart o hide_questionsinfotostudents está habilitado para este quiz
         $autostart = $DB->get_record('quizaccess_autostart', ['quizid' => $quiz->id]);
         
-        if (empty($autostart) || empty($autostart->enabled)) {
+        if (empty($autostart) || (empty($autostart->enabled) && empty($autostart->hide_questionsinfotostudents))) {
             return null;
         }
 
@@ -68,17 +68,63 @@ class quizaccess_autostart extends access_rule_base {
         global $PAGE, $DB;
         
         $quiz = $this->quizobj->get_quiz();
+        $context = $this->quizobj->get_context();
         
         // Verificar si el autostart está habilitado
         $autostart = $DB->get_record('quizaccess_autostart', ['quizid' => $quiz->id]);
         
-        if (!empty($autostart) && !empty($autostart->enabled)) {
-            // Agregar JavaScript para auto-iniciar cuando el DOM esté listo
-            $jsurl = new moodle_url('/mod/quiz/accessrule/autostart/autostart.js');
-            $PAGE->requires->js($jsurl);
-            $PAGE->requires->js_init_call('M.quizaccess_autostart.init', array(), true);
+        $output = '';
+        
+        if (!empty($autostart)) {
+            if (!empty($autostart->enabled)) {
+                // Agregar JavaScript para auto-iniciar cuando el DOM esté listo
+                $jsurl = new moodle_url('/mod/quiz/accessrule/autostart/autostart.js');
+                $PAGE->requires->js($jsurl);
+                $PAGE->requires->js_init_call('M.quizaccess_autostart.init', array(), true);
+            }
+            
+            // Aplicar CSS para ocultar .que .info si está habilitado y el usuario es estudiante
+            if (!empty($autostart->hide_questionsinfotostudents)) {
+                // Verificar si el usuario es estudiante (no tiene capacidad de ver reportes)
+                $isstudent = !has_capability('mod/quiz:viewreports', $context);
+                
+                // Log para debug
+                error_log("quizaccess_autostart: hide_questionsinfotostudents enabled = " . 
+                    ($autostart->hide_questionsinfotostudents ? 'yes' : 'no'));
+                error_log("quizaccess_autostart: is_student = " . ($isstudent ? 'yes' : 'no'));
+                error_log("quizaccess_autostart: has viewreports capability = " . 
+                    (has_capability('mod/quiz:viewreports', $context) ? 'yes' : 'no'));
+                
+                if ($isstudent) {
+                    error_log("quizaccess_autostart: Applying CSS to hide .que .info for student");
+                    // Usar JavaScript para aplicar el estilo de manera más confiable
+                    $output .= '<style>.que .info { display: none !important; }</style>';
+                    $output .= '<script>
+                        (function() {
+                            console.log("quizaccess_autostart: Attempting to hide question info");
+                            function hideQuestionInfo() {
+                                var infoElements = document.querySelectorAll(".que .info");
+                                console.log("quizaccess_autostart: Found " + infoElements.length + " .que .info elements");
+                                for (var i = 0; i < infoElements.length; i++) {
+                                    infoElements[i].style.display = "none";
+                                    console.log("quizaccess_autostart: Hidden element " + i);
+                                }
+                            }
+                            if (document.readyState === "loading") {
+                                document.addEventListener("DOMContentLoaded", hideQuestionInfo);
+                            } else {
+                                hideQuestionInfo();
+                                // También intentar después de un pequeño delay por si se carga dinámicamente
+                                setTimeout(hideQuestionInfo, 500);
+                            }
+                        })();
+                    </script>';
+                } else {
+                    error_log("quizaccess_autostart: User is not a student, not hiding question info");
+                }
+            }
         }
-        return '';
+        return $output;
     }
 
     /**
@@ -93,12 +139,18 @@ class quizaccess_autostart extends access_rule_base {
         
         $quiz = $quizform->get_current();
         $defaultvalue = 0;
+        $defaulthidevalue = 0;
         
         // Verificar que quiz->id existe y es un número entero válido (no cadena vacía)
         if ($quiz && isset($quiz->id) && !empty($quiz->id) && is_numeric($quiz->id) && $quiz->id > 0) {
             $autostart = $DB->get_record('quizaccess_autostart', ['quizid' => (int)$quiz->id]);
-            if ($autostart && !empty($autostart->enabled)) {
-                $defaultvalue = 1;
+            if ($autostart) {
+                if (!empty($autostart->enabled)) {
+                    $defaultvalue = 1;
+                }
+                if (!empty($autostart->hide_questionsinfotostudents)) {
+                    $defaulthidevalue = 1;
+                }
             }
         }
         
@@ -119,6 +171,18 @@ class quizaccess_autostart extends access_rule_base {
 
         $mform->setDefault('autostart_enabled', $defaultvalue);
         $mform->addHelpButton('autostart_enabled', 'autostartenabled', 'quizaccess_autostart');
+        
+        $mform->addElement(
+            'advcheckbox',
+            'hide_questionsinfotostudents',
+            get_string('hidequestionsinfotostudents', 'quizaccess_autostart'),
+            null,
+            null,
+            [0, 1]
+        );
+
+        $mform->setDefault('hide_questionsinfotostudents', $defaulthidevalue);
+        $mform->addHelpButton('hide_questionsinfotostudents', 'hidequestionsinfotostudents', 'quizaccess_autostart');
     }
 
     /**
@@ -129,13 +193,13 @@ class quizaccess_autostart extends access_rule_base {
     public static function save_settings($quiz) {
         global $DB;
         
-        // El valor viene del formulario en $quiz->autostart_enabled
-        if (!isset($quiz->id) || !isset($quiz->autostart_enabled) || 
-            empty($quiz->id) || !is_numeric($quiz->id) || $quiz->id <= 0) {
+        // El valor viene del formulario en $quiz->autostart_enabled y $quiz->hide_questionsinfotostudents
+        if (!isset($quiz->id) || empty($quiz->id) || !is_numeric($quiz->id) || $quiz->id <= 0) {
             return;
         }
         
         $enabled = !empty($quiz->autostart_enabled) ? 1 : 0;
+        $hidequestionsinfo = !empty($quiz->hide_questionsinfotostudents) ? 1 : 0;
         $now = time();
         $quizid = (int)$quiz->id;
         
@@ -145,14 +209,16 @@ class quizaccess_autostart extends access_rule_base {
         if ($existing) {
             // Actualizar el registro existente
             $existing->enabled = $enabled;
+            $existing->hide_questionsinfotostudents = $hidequestionsinfo;
             $existing->timemodified = $now;
             $DB->update_record('quizaccess_autostart', $existing);
         } else {
-            // Crear un nuevo registro solo si está habilitado
-            if ($enabled) {
+            // Crear un nuevo registro si está habilitado o si hide_questionsinfotostudents está marcado
+            if ($enabled || $hidequestionsinfo) {
                 $record = new stdClass();
                 $record->quizid = $quizid;
                 $record->enabled = $enabled;
+                $record->hide_questionsinfotostudents = $hidequestionsinfo;
                 $record->timecreated = $now;
                 $record->timemodified = $now;
                 $DB->insert_record('quizaccess_autostart', $record);
