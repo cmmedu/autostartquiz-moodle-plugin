@@ -77,6 +77,19 @@ function xmldb_quizaccess_autostart_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2025112201, 'quizaccess', 'autostart');
     }
 
+    if ($oldversion < 2025112203) {
+        // Add hide_questionsinfotostudents field.
+        $table = new xmldb_table('quizaccess_autostart');
+        $field = new xmldb_field('hide_questionsinfotostudents', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
+        
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Hide questions info savepoint reached.
+        upgrade_plugin_savepoint(true, 2025112203, 'quizaccess', 'autostart');
+    }
+
     return true;
 }
 

@@ -15,6 +15,9 @@
         <FIELD NAME="enabled" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0">
           <COMMENT>Whether auto-start is turned on</COMMENT>
         </FIELD>
+        <FIELD NAME="hide_questionsinfotostudents" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0">
+          <COMMENT>Whether to hide question info to students</COMMENT>
+        </FIELD>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false">
           <COMMENT>Creation timestamp</COMMENT>
         </FIELD>
