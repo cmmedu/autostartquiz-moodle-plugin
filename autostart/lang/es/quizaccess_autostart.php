@@ -7,3 +7,5 @@ $string['autostartenabled'] = 'Iniciar el cuestionario automáticamente';
 $string['autostartenabled_help'] = 'Si está activado, el cuestionario se abrirá inmediatamente sin la pantalla intermedia.';
 $string['hidequestionsinfotostudents'] = 'Ocultar información de preguntas a los estudiantes';
 $string['hidequestionsinfotostudents_help'] = 'Si está activado, la información de las preguntas se ocultará a los estudiantes usando CSS.';
+$string['autosend'] = 'Enviar automáticamente al terminar intento';
+$string['autosend_help'] = 'Si está activado, cuando el estudiante presione "Terminar intento", el formulario de "Enviar todo y terminar" se enviará automáticamente.';

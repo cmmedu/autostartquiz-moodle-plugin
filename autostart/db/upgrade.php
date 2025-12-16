@@ -90,6 +90,19 @@ function xmldb_quizaccess_autostart_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2025112203, 'quizaccess', 'autostart');
     }
 
+    if ($oldversion < 2025112204) {
+        // Add autosend field.
+        $table = new xmldb_table('quizaccess_autostart');
+        $field = new xmldb_field('autosend', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
+        
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Autosend savepoint reached.
+        upgrade_plugin_savepoint(true, 2025112204, 'quizaccess', 'autostart');
+    }
+
     return true;
 }
 

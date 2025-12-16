@@ -43,10 +43,11 @@ class quizaccess_autostart extends access_rule_base {
         
         $quiz = $quizobj->get_quiz();
         
-        // Verificar si el autostart o hide_questionsinfotostudents está habilitado para este quiz
+        // Verificar si el autostart, hide_questionsinfotostudents o autosend está habilitado para este quiz
         $autostart = $DB->get_record('quizaccess_autostart', ['quizid' => $quiz->id]);
         
-        if (empty($autostart) || (empty($autostart->enabled) && empty($autostart->hide_questionsinfotostudents))) {
+        $autosend = isset($autostart->autosend) ? $autostart->autosend : 0;
+        if (empty($autostart) || (empty($autostart->enabled) && empty($autostart->hide_questionsinfotostudents) && empty($autosend))) {
             return null;
         }
 
@@ -68,6 +69,7 @@ class quizaccess_autostart extends access_rule_base {
      */
     public function setup_attempt_page($page) {
         $this->apply_hide_question_info_css($page);
+        $this->apply_autosend_js($page);
     }
     
     /**
@@ -78,6 +80,7 @@ class quizaccess_autostart extends access_rule_base {
      */
     public function setup_review_page($page) {
         $this->apply_hide_question_info_css($page);
+        $this->apply_hide_finish_review_button($page);
     }
     
     /**
@@ -144,6 +147,114 @@ class quizaccess_autostart extends access_rule_base {
     }
     
     /**
+     * Oculta el botón "Finalizar revisión" en la página de revisión.
+     * Identifica el botón por la clase mod_quiz-next-nav y el href que contiene view.php
+     *
+     * @param moodle_page $page la página actual.
+     */
+    private function apply_hide_finish_review_button($page) {
+        global $DB;
+        
+        $quiz = $this->quizobj->get_quiz();
+        $context = $this->quizobj->get_context();
+        
+        $autostart = $DB->get_record('quizaccess_autostart', ['quizid' => $quiz->id]);
+        
+        // Verificar si el autosend está habilitado (solo ocultamos si autosend está activo)
+        $autosend = isset($autostart->autosend) ? $autostart->autosend : 0;
+        if (!empty($autostart) && !empty($autosend)) {
+            // Verificar si el usuario es estudiante (no tiene capacidad de ver reportes)
+            $isstudent = !has_capability('mod/quiz:viewreports', $context);
+            
+            if ($isstudent) {
+                // Cargar el archivo CSS del plugin
+                $page->requires->css('/mod/quiz/accessrule/autostart/styles.css');
+                
+                // JavaScript para ocultar el botón "Finalizar revisión"
+                // Identificamos el botón por la clase mod_quiz-next-nav y el href que contiene view.php
+                $jscode = '
+                    (function() {
+                        function hideFinishReviewButton() {
+                            // Buscar enlaces con clase mod_quiz-next-nav que apunten a view.php
+                            var links = document.querySelectorAll("a.mod_quiz-next-nav");
+                            for (var i = 0; i < links.length; i++) {
+                                var link = links[i];
+                                var href = link.getAttribute("href") || link.href || "";
+                                // Si el href contiene view.php, es el botón de finalizar revisión
+                                if (href.indexOf("view.php") !== -1) {
+                                    link.style.display = "none";
+                                    // También ocultar el contenedor submitbtns si solo contiene este enlace
+                                    var container = link.closest(".submitbtns");
+                                    if (container) {
+                                        var visibleLinks = container.querySelectorAll("a:not([style*=\"display: none\"])");
+                                        if (visibleLinks.length === 0 || (visibleLinks.length === 1 && visibleLinks[0] === link)) {
+                                            container.style.display = "none";
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Ejecutar inmediatamente
+                        hideFinishReviewButton();
+                        
+                        // Ejecutar cuando el DOM esté listo
+                        if (document.readyState === "loading") {
+                            document.addEventListener("DOMContentLoaded", function() {
+                                setTimeout(hideFinishReviewButton, 100);
+                            });
+                        } else {
+                            setTimeout(hideFinishReviewButton, 100);
+                        }
+                        
+                        // Observar cambios dinámicos en el DOM
+                        if (typeof MutationObserver !== "undefined") {
+                            var observer = new MutationObserver(function(mutations) {
+                                hideFinishReviewButton();
+                            });
+                            
+                            if (document.body) {
+                                observer.observe(document.body, { 
+                                    childList: true, 
+                                    subtree: true 
+                                });
+                            }
+                        }
+                    })();
+                ';
+                $page->requires->js_init_code($jscode, true);
+            }
+        }
+    }
+    
+    /**
+     * Aplica el JavaScript para auto-enviar el formulario de finalización si está configurado.
+     *
+     * @param moodle_page $page la página actual.
+     */
+    private function apply_autosend_js($page) {
+        global $DB;
+        
+        $quiz = $this->quizobj->get_quiz();
+        $context = $this->quizobj->get_context();
+        
+        $autostart = $DB->get_record('quizaccess_autostart', ['quizid' => $quiz->id]);
+        
+        $autosend = isset($autostart->autosend) ? $autostart->autosend : 0;
+        if (!empty($autostart) && !empty($autosend)) {
+            // Verificar si el usuario es estudiante (no tiene capacidad de ver reportes)
+            $isstudent = !has_capability('mod/quiz:viewreports', $context);
+            
+            if ($isstudent) {
+                // Cargar el archivo JavaScript del plugin
+                $jsurl = new moodle_url('/mod/quiz/accessrule/autostart/autosend.js');
+                $page->requires->js($jsurl);
+                $page->requires->js_init_call('M.quizaccess_autostart.initAutoSend', array(), true);
+            }
+        }
+    }
+    
+    /**
      * Información adicional para mostrar en la página del quiz.
      * Usamos esto para inyectar JavaScript que auto-inicia el intento.
      */
@@ -165,6 +276,15 @@ class quizaccess_autostart extends access_rule_base {
                 $PAGE->requires->js($jsurl);
                 $PAGE->requires->js_init_call('M.quizaccess_autostart.init', array(), true);
             }
+            
+            // Agregar JavaScript para auto-enviar si está habilitado
+            $autosend = isset($autostart->autosend) ? $autostart->autosend : 0;
+            if (!empty($autosend)) {
+                $isstudent = !has_capability('mod/quiz:viewreports', $context);
+                if ($isstudent) {
+                    $this->apply_autosend_js($PAGE);
+                }
+            }
         }
         return $output;
     }
@@ -182,6 +302,7 @@ class quizaccess_autostart extends access_rule_base {
         $quiz = $quizform->get_current();
         $defaultvalue = 0;
         $defaulthidevalue = 0;
+        $defaultautosendvalue = 0;
         
         // Verificar que quiz->id existe y es un número entero válido (no cadena vacía)
         if ($quiz && isset($quiz->id) && !empty($quiz->id) && is_numeric($quiz->id) && $quiz->id > 0) {
@@ -192,6 +313,10 @@ class quizaccess_autostart extends access_rule_base {
                 }
                 if (!empty($autostart->hide_questionsinfotostudents)) {
                     $defaulthidevalue = 1;
+                }
+                $autosend = isset($autostart->autosend) ? $autostart->autosend : 0;
+                if (!empty($autosend)) {
+                    $defaultautosendvalue = 1;
                 }
             }
         }
@@ -225,6 +350,18 @@ class quizaccess_autostart extends access_rule_base {
 
         $mform->setDefault('hide_questionsinfotostudents', $defaulthidevalue);
         $mform->addHelpButton('hide_questionsinfotostudents', 'hidequestionsinfotostudents', 'quizaccess_autostart');
+        
+        $mform->addElement(
+            'advcheckbox',
+            'autosend',
+            get_string('autosend', 'quizaccess_autostart'),
+            null,
+            null,
+            [0, 1]
+        );
+
+        $mform->setDefault('autosend', $defaultautosendvalue);
+        $mform->addHelpButton('autosend', 'autosend', 'quizaccess_autostart');
     }
 
     /**
@@ -235,13 +372,14 @@ class quizaccess_autostart extends access_rule_base {
     public static function save_settings($quiz) {
         global $DB;
         
-        // El valor viene del formulario en $quiz->autostart_enabled y $quiz->hide_questionsinfotostudents
+        // El valor viene del formulario en $quiz->autostart_enabled, $quiz->hide_questionsinfotostudents y $quiz->autosend
         if (!isset($quiz->id) || empty($quiz->id) || !is_numeric($quiz->id) || $quiz->id <= 0) {
             return;
         }
         
         $enabled = !empty($quiz->autostart_enabled) ? 1 : 0;
         $hidequestionsinfo = !empty($quiz->hide_questionsinfotostudents) ? 1 : 0;
+        $autosend = !empty($quiz->autosend) ? 1 : 0;
         $now = time();
         $quizid = (int)$quiz->id;
         
@@ -252,15 +390,17 @@ class quizaccess_autostart extends access_rule_base {
             // Actualizar el registro existente
             $existing->enabled = $enabled;
             $existing->hide_questionsinfotostudents = $hidequestionsinfo;
+            $existing->autosend = $autosend;
             $existing->timemodified = $now;
             $DB->update_record('quizaccess_autostart', $existing);
         } else {
-            // Crear un nuevo registro si está habilitado o si hide_questionsinfotostudents está marcado
-            if ($enabled || $hidequestionsinfo) {
+            // Crear un nuevo registro si está habilitado, si hide_questionsinfotostudents está marcado o si autosend está marcado
+            if ($enabled || $hidequestionsinfo || $autosend) {
                 $record = new stdClass();
                 $record->quizid = $quizid;
                 $record->enabled = $enabled;
                 $record->hide_questionsinfotostudents = $hidequestionsinfo;
+                $record->autosend = $autosend;
                 $record->timecreated = $now;
                 $record->timemodified = $now;
                 $DB->insert_record('quizaccess_autostart', $record);
