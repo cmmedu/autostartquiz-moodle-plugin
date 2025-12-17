@@ -18,6 +18,9 @@
         <FIELD NAME="hide_questionsinfotostudents" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0">
           <COMMENT>Whether to hide question info to students</COMMENT>
         </FIELD>
+        <FIELD NAME="autosend" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0">
+          <COMMENT>Whether to automatically send and finish the attempt</COMMENT>
+        </FIELD>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false">
           <COMMENT>Creation timestamp</COMMENT>
         </FIELD>
