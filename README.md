@@ -8,7 +8,10 @@ This plugin lets students enter specific quizzes immediately by toggling the “
 
 ## Key features
 - Automatically begins the quiz as soon as the student accesses its page.
+- Executes only when there are no submitted attempts on the quiz.
 - Applies to quizzes that allow this access rule and can be enabled or disabled by the teacher at will.
+- Option to hide info blocks of questions from students.
+- Option to autosend the quiz immediately after the student marks the quiz as finished.
 - Ideal for quizzes that combine instructional content with questions but are not necessarily high-stakes evaluations.
 
 ## Building the plugin

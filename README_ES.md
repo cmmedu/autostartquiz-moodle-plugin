@@ -8,8 +8,11 @@ Este plugin facilita que los estudiantes accedan de inmediato a ciertos cuestion
 
 ## Características principales
 - El acceso a cuestionarios comienza en cuanto el estudiante entra a la actividad.
-- Funciona para los cuestionarios que admiten esta regla de acceso, pudiendo activarse y desactivarse a voluntad del profesor
-- Ideal para realizar cuestionarios que contienen tanto contenido como preguntas pero que no necesesariamente pretenden ser evaluaciones
+- Se ejecuta solo cuando no hay intentos enviados en el cuestionario.
+- Funciona para los cuestionarios que admiten esta regla de acceso, pudiendo activarse y desactivarse a voluntad del profesor.
+- Opción de ocultar los bloques de información de las preguntas a los estudiantes.
+- Opción de envío automático para enviar el cuestionario inmediatamente después de que el estudiante marque el cuestionario como finalizado.
+- Ideal para realizar cuestionarios que contienen tanto contenido como preguntas pero que no necesariamente pretenden ser evaluaciones.
 
 ## Para compilar este plugin
 
