@@ -149,6 +149,7 @@ class quizaccess_autostart extends access_rule_base {
     /**
      * Oculta el botón "Finalizar revisión" en la página de revisión.
      * Identifica el botón por la clase mod_quiz-next-nav y el href que contiene view.php
+     * Aplica a todos los usuarios (no solo estudiantes).
      *
      * @param moodle_page $page la página actual.
      */
@@ -156,79 +157,74 @@ class quizaccess_autostart extends access_rule_base {
         global $DB;
         
         $quiz = $this->quizobj->get_quiz();
-        $context = $this->quizobj->get_context();
         
         $autostart = $DB->get_record('quizaccess_autostart', ['quizid' => $quiz->id]);
         
         // Verificar si el autosend está habilitado (solo ocultamos si autosend está activo)
         $autosend = isset($autostart->autosend) ? $autostart->autosend : 0;
         if (!empty($autostart) && !empty($autosend)) {
-            // Verificar si el usuario es estudiante (no tiene capacidad de ver reportes)
-            $isstudent = !has_capability('mod/quiz:viewreports', $context);
+            // Cargar el archivo CSS del plugin
+            $page->requires->css('/mod/quiz/accessrule/autostart/styles.css');
             
-            if ($isstudent) {
-                // Cargar el archivo CSS del plugin
-                $page->requires->css('/mod/quiz/accessrule/autostart/styles.css');
-                
-                // JavaScript para ocultar el botón "Finalizar revisión"
-                // Identificamos el botón por la clase mod_quiz-next-nav y el href que contiene view.php
-                $jscode = '
-                    (function() {
-                        function hideFinishReviewButton() {
-                            // Buscar enlaces con clase mod_quiz-next-nav que apunten a view.php
-                            var links = document.querySelectorAll("a.mod_quiz-next-nav");
-                            for (var i = 0; i < links.length; i++) {
-                                var link = links[i];
-                                var href = link.getAttribute("href") || link.href || "";
-                                // Si el href contiene view.php, es el botón de finalizar revisión
-                                if (href.indexOf("view.php") !== -1) {
-                                    link.style.display = "none";
-                                    // También ocultar el contenedor submitbtns si solo contiene este enlace
-                                    var container = link.closest(".submitbtns");
-                                    if (container) {
-                                        var visibleLinks = container.querySelectorAll("a:not([style*=\"display: none\"])");
-                                        if (visibleLinks.length === 0 || (visibleLinks.length === 1 && visibleLinks[0] === link)) {
-                                            container.style.display = "none";
-                                        }
+            // JavaScript para ocultar el botón "Finalizar revisión"
+            // Identificamos el botón por la clase mod_quiz-next-nav y el href que contiene view.php
+            $jscode = '
+                (function() {
+                    function hideFinishReviewButton() {
+                        // Buscar enlaces con clase mod_quiz-next-nav que apunten a view.php
+                        var links = document.querySelectorAll("a.mod_quiz-next-nav");
+                        for (var i = 0; i < links.length; i++) {
+                            var link = links[i];
+                            var href = link.getAttribute("href") || link.href || "";
+                            // Si el href contiene view.php, es el botón de finalizar revisión
+                            if (href.indexOf("view.php") !== -1) {
+                                link.style.display = "none";
+                                // También ocultar el contenedor submitbtns si solo contiene este enlace
+                                var container = link.closest(".submitbtns");
+                                if (container) {
+                                    var visibleLinks = container.querySelectorAll("a:not([style*=\"display: none\"])");
+                                    if (visibleLinks.length === 0 || (visibleLinks.length === 1 && visibleLinks[0] === link)) {
+                                        container.style.display = "none";
                                     }
                                 }
                             }
                         }
-                        
-                        // Ejecutar inmediatamente
-                        hideFinishReviewButton();
-                        
-                        // Ejecutar cuando el DOM esté listo
-                        if (document.readyState === "loading") {
-                            document.addEventListener("DOMContentLoaded", function() {
-                                setTimeout(hideFinishReviewButton, 100);
-                            });
-                        } else {
+                    }
+                    
+                    // Ejecutar inmediatamente
+                    hideFinishReviewButton();
+                    
+                    // Ejecutar cuando el DOM esté listo
+                    if (document.readyState === "loading") {
+                        document.addEventListener("DOMContentLoaded", function() {
                             setTimeout(hideFinishReviewButton, 100);
-                        }
+                        });
+                    } else {
+                        setTimeout(hideFinishReviewButton, 100);
+                    }
+                    
+                    // Observar cambios dinámicos en el DOM
+                    if (typeof MutationObserver !== "undefined") {
+                        var observer = new MutationObserver(function(mutations) {
+                            hideFinishReviewButton();
+                        });
                         
-                        // Observar cambios dinámicos en el DOM
-                        if (typeof MutationObserver !== "undefined") {
-                            var observer = new MutationObserver(function(mutations) {
-                                hideFinishReviewButton();
+                        if (document.body) {
+                            observer.observe(document.body, { 
+                                childList: true, 
+                                subtree: true 
                             });
-                            
-                            if (document.body) {
-                                observer.observe(document.body, { 
-                                    childList: true, 
-                                    subtree: true 
-                                });
-                            }
                         }
-                    })();
-                ';
-                $page->requires->js_init_code($jscode, true);
-            }
+                    }
+                })();
+            ';
+            $page->requires->js_init_code($jscode, true);
         }
     }
     
     /**
      * Aplica el JavaScript para auto-enviar el formulario de finalización si está configurado.
+     * Aplica a todos los usuarios (no solo estudiantes).
      *
      * @param moodle_page $page la página actual.
      */
@@ -236,21 +232,15 @@ class quizaccess_autostart extends access_rule_base {
         global $DB;
         
         $quiz = $this->quizobj->get_quiz();
-        $context = $this->quizobj->get_context();
         
         $autostart = $DB->get_record('quizaccess_autostart', ['quizid' => $quiz->id]);
         
         $autosend = isset($autostart->autosend) ? $autostart->autosend : 0;
         if (!empty($autostart) && !empty($autosend)) {
-            // Verificar si el usuario es estudiante (no tiene capacidad de ver reportes)
-            $isstudent = !has_capability('mod/quiz:viewreports', $context);
-            
-            if ($isstudent) {
-                // Cargar el archivo JavaScript del plugin
-                $jsurl = new moodle_url('/mod/quiz/accessrule/autostart/autosend.js');
-                $page->requires->js($jsurl);
-                $page->requires->js_init_call('M.quizaccess_autostart.initAutoSend', array(), true);
-            }
+            // Cargar el archivo JavaScript del plugin para todos los usuarios
+            $jsurl = new moodle_url('/mod/quiz/accessrule/autostart/autosend.js');
+            $page->requires->js($jsurl);
+            $page->requires->js_init_call('M.quizaccess_autostart.initAutoSend', array(), true);
         }
     }
     
@@ -278,12 +268,10 @@ class quizaccess_autostart extends access_rule_base {
             }
             
             // Agregar JavaScript para auto-enviar si está habilitado
+            // Aplica a todos los usuarios (no solo estudiantes)
             $autosend = isset($autostart->autosend) ? $autostart->autosend : 0;
             if (!empty($autosend)) {
-                $isstudent = !has_capability('mod/quiz:viewreports', $context);
-                if ($isstudent) {
-                    $this->apply_autosend_js($PAGE);
-                }
+                $this->apply_autosend_js($PAGE);
             }
         }
         return $output;
